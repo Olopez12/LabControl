@@ -1,83 +1,314 @@
-/*
- * Lab_Control.c
- *
- * Created: 20/09/2024 11:14:40
- * Author : Usuario
- */ 
-#define F_CPU 16000000
-#include <avr/io.h>
-#include <util/delay.h>
-#include <stdlib.h>
-#include "UART/UART.h"
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * @file           : main.c
+  * @brief          : Main program body
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2024 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
+  ******************************************************************************
+  */
+/* USER CODE END Header */
+/* Includes ------------------------------------------------------------------*/
+#include "main.h"
 
-#define DEBOUNCE_TIME 100  // Tiempo de antirrebote en milisegundos
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
+#include <stdio.h>
+/* USER CODE END Includes */
 
-uint8_t debounce(uint8_t pin);
-void setup();
-void check_buttons();
+/* Private typedef -----------------------------------------------------------*/
+/* USER CODE BEGIN PTD */
 
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+UART_HandleTypeDef huart1;
+UART_HandleTypeDef huart2;
+
+/* USER CODE BEGIN PV */
+
+uint8_t received_designator;
+
+/* USER CODE END PV */
+
+/* Private function prototypes -----------------------------------------------*/
+void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
+static void MX_USART2_UART_Init(void);
+static void MX_USART1_UART_Init(void);
+/* USER CODE BEGIN PFP */
+
+/* USER CODE END PFP */
+
+/* Private user code ---------------------------------------------------------*/
+/* USER CODE BEGIN 0 */
+
+/* USER CODE END 0 */
+
+/**
+  * @brief  The application entry point.
+  * @retval int
+  */
 int main(void)
 {
-	setup();
-	UART_init();
 
-	while (1)
-	{
-		// Revisar los botones continuamente
-		check_buttons();
+  /* USER CODE BEGIN 1 */
 
-		// Apagar PD2 a PD7 despuÈs de cada ciclo para evitar que los LEDs queden encendidos
-		PORTD &= ~(0xFC);
-	}
+  /* USER CODE END 1 */
 
-	return 0;
+  /* MCU Configuration--------------------------------------------------------*/
+
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
+
+  /* USER CODE BEGIN Init */
+
+  /* USER CODE END Init */
+
+  /* Configure the system clock */
+  SystemClock_Config();
+
+  /* USER CODE BEGIN SysInit */
+
+  /* USER CODE END SysInit */
+
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_USART2_UART_Init();
+  MX_USART1_UART_Init();
+  /* USER CODE BEGIN 2 */
+
+  // Iniciar la recepci√≥n de UART1 con interrupciones
+     HAL_UART_Receive_IT(&huart1, &received_designator, 1);
+
+  /* USER CODE END 2 */
+
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+  while (1)
+  {
+    /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
+  }
+  /* USER CODE END 3 */
 }
 
-void setup() {
-	// Configurar PD2-PD7 como salida para los LEDs
-	DDRD |= 0xFC;
+/**
+  * @brief System Clock Configuration
+  * @retval None
+  */
+void SystemClock_Config(void)
+{
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-	// Configurar PB0-PB5 como entrada para los botones
-	
-	DDRB &= ~(0x3F);
-	// Habilitar resistencias pull-up en PB0-PB5
-	PORTB |= 0x3F;
+  /** Configure the main internal regulator output voltage
+  */
+  __HAL_RCC_PWR_CLK_ENABLE();
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
+
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
+  */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+  RCC_OscInitStruct.PLL.PLLM = 8;
+  RCC_OscInitStruct.PLL.PLLN = 72;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+  RCC_OscInitStruct.PLL.PLLQ = 2;
+  RCC_OscInitStruct.PLL.PLLR = 2;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Initializes the CPU, AHB and APB buses clocks
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
 }
 
-uint8_t debounce(uint8_t pin) {
-	if (!(PINB & (1 << pin))) {  // Si el botÛn est· presionado
-		_delay_ms(DEBOUNCE_TIME);  // Esperar el tiempo de antirrebote
-		if (!(PINB & (1 << pin))) {  // Verificar de nuevo si el botÛn sigue presionado
-			return 1;  // Confirmar que el botÛn est· presionado
-		}
-	}
-	return 0;  // El botÛn no est· presionado
+/**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 9600;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
+
 }
 
-void check_buttons() {
-	// Revisar quÈ botÛn se presionÛ (PB0 a PB5) y encender el LED correspondiente
-	if (debounce(PINB0)) {
-		PORTD |= (1 << PIND2);  // Encender LED en PD2
-		send_via_uart('1');     // Enviar el n˙mero '1'
-	}
-	if (debounce(PINB1)) {
-		PORTD |= (1 << PIND3);  // Encender LED en PD3
-		send_via_uart('2');     // Enviar el n˙mero '2'
-	}
-	if (debounce(PINB2)) {
-		PORTD |= (1 << PIND4);  // Encender LED en PD4
-		send_via_uart('3');     // Enviar el n˙mero '3'
-	}
-	if (debounce(PINB3)) {
-		PORTD |= (1 << PIND5);  // Encender LED en PD5
-		send_via_uart('4');     // Enviar el n˙mero '4'
-	}
-	if (debounce(PINB4)) {
-		PORTD |= (1 << PIND6);  // Encender LED en PD6
-		send_via_uart('5');     // Enviar el n˙mero '5'
-	}
-	if (debounce(PINB5)) {
-		PORTD |= (1 << PIND7);  // Encender LED en PD6
-		send_via_uart('6');     // Enviar el n˙mero '5'
-	}
+/**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
 }
+
+/**
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_GPIO_Init(void)
+{
+/* USER CODE BEGIN MX_GPIO_Init_1 */
+/* USER CODE END MX_GPIO_Init_1 */
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOH_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+
+/* USER CODE BEGIN MX_GPIO_Init_2 */
+/* USER CODE END MX_GPIO_Init_2 */
+}
+
+/* USER CODE BEGIN 4 */
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+    if (huart->Instance == USART1) {
+        // Convertimos el car√°cter ASCII recibido a su valor num√©rico
+        uint8_t designator_num = received_designator - '0'; // Restamos '0' (48 en ASCII)
+
+        switch (designator_num) {
+            case 1:
+                HAL_UART_Transmit(&huart2, (uint8_t*)"left\r\n", 6, HAL_MAX_DELAY);
+                break;
+            case 2:
+                HAL_UART_Transmit(&huart2, (uint8_t*)"right\r\n", 7, HAL_MAX_DELAY);
+                break;
+            case 3:
+                HAL_UART_Transmit(&huart2, (uint8_t*)"up\r\n", 4, HAL_MAX_DELAY);
+                break;
+            case 4:
+                HAL_UART_Transmit(&huart2, (uint8_t*)"down\r\n", 6, HAL_MAX_DELAY);
+                break;
+            case 5:
+                HAL_UART_Transmit(&huart2, (uint8_t*)"x\r\n", 3, HAL_MAX_DELAY);
+                break;
+            case 6:
+                HAL_UART_Transmit(&huart2, (uint8_t*)"y\r\n", 3, HAL_MAX_DELAY);
+                break;
+            default:
+                HAL_UART_Transmit(&huart2, (uint8_t*)"Comando desconocido\r\n", 21, HAL_MAX_DELAY);
+                break;
+        }
+
+        // Reiniciar la recepci√≥n para el siguiente byte
+        HAL_UART_Receive_IT(&huart1, &received_designator, 1);
+    }
+}
+
+/* USER CODE END 4 */
+
+/**
+  * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  */
+void Error_Handler(void)
+{
+  /* USER CODE BEGIN Error_Handler_Debug */
+  /* User can add his own implementation to report the HAL error return state */
+  __disable_irq();
+  while (1)
+  {
+  }
+  /* USER CODE END Error_Handler_Debug */
+}
+
+#ifdef  USE_FULL_ASSERT
+/**
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
+void assert_failed(uint8_t *file, uint32_t line)
+{
+  /* USER CODE BEGIN 6 */
+  /* User can add his own implementation to report the file name and line number,
+     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+  /* USER CODE END 6 */
+}
+#endif /* USE_FULL_ASSERT */
